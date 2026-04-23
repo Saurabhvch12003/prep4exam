@@ -1,8 +1,8 @@
 import {
+  ArrowRightCircle,
   BadgeCheck,
   CircleX,
   Target,
-  ArrowRightCircle,
 } from "lucide-react";
 import { ReviewResponse } from "@/types/quiz";
 
@@ -16,13 +16,13 @@ export default function ReviewCard({ data }: Props) {
   const accuracy = Math.round((data.score / data.total) * 100);
 
   return (
-    <section className="rounded-3xl border border-slate-200 bg-slate-900/60 backdrop-blur border border-slate-700 p-6 shadow-sm">
+    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
             Review
           </p>
-          <h2 className="mt-1 text-2xl font-semibold text-slate-900">
+          <h2 className="mt-1 text-3xl font-semibold text-slate-900">
             Here’s what you should revise next
           </h2>
         </div>
@@ -58,15 +58,23 @@ export default function ReviewCard({ data }: Props) {
         </div>
       </div>
 
-      <div className="mt-6 rounded-2xl bg-slate-50 p-5">
-        <h3 className="text-sm font-semibold text-slate-900">Performance Summary</h3>
-        <p className="mt-3 text-sm leading-7 text-slate-700">{data.summary}</p>
-      </div>
+      <div
+  className={`mt-6 rounded-2xl p-5 ${
+    accuracy <= 40
+      ? "border border-red-100 bg-red-50"
+      : accuracy <= 70
+      ? "border border-amber-100 bg-amber-50"
+      : "border border-emerald-100 bg-emerald-50"
+  }`}
+>
+  <h3 className="text-base font-semibold text-slate-900">Performance Summary</h3>
+  <p className="mt-3 text-base leading-8 text-slate-700">{data.summary}</p>
+</div>
 
       <div className="mt-6 grid gap-5 md:grid-cols-2">
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-          <h3 className="text-sm font-semibold text-slate-900">Weak Areas</h3>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-7 text-slate-700">
+          <h3 className="text-base font-semibold text-slate-900">Weak Areas</h3>
+          <ul className="mt-3 list-disc space-y-2 pl-5 text-base leading-8 text-slate-700">
             {data.weakAreas.map((area, index) => (
               <li key={index}>{area}</li>
             ))}
@@ -76,11 +84,11 @@ export default function ReviewCard({ data }: Props) {
         <div className="rounded-2xl border border-indigo-100 bg-indigo-50/70 p-5">
           <div className="flex items-center gap-2">
             <ArrowRightCircle className="h-4 w-4 text-indigo-600" />
-            <h3 className="text-sm font-semibold text-slate-900">
+            <h3 className="text-base font-semibold text-slate-900">
               What to Revise Next
             </h3>
           </div>
-          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-7 text-slate-700">
+          <ul className="mt-3 list-disc space-y-2 pl-5 text-base leading-8 text-slate-700">
             {data.reviseNext.map((item, index) => (
               <li key={index}>{item}</li>
             ))}
@@ -99,7 +107,7 @@ export default function ReviewCard({ data }: Props) {
             }`}
           >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <p className="font-semibold leading-7 text-slate-900">
+              <p className="text-lg font-semibold leading-8 text-slate-900">
                 Q{index + 1}. {item.question}
               </p>
 
@@ -115,10 +123,10 @@ export default function ReviewCard({ data }: Props) {
             </div>
 
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <div className="rounded-xl bg-slate-900/60 backdrop-blur border border-slate-700/80 p-4 text-sm">
+              <div className="rounded-xl bg-white/70 p-4 text-base">
                 <p className="font-semibold text-slate-900">Your answer</p>
                 <p
-                  className={`mt-2 leading-6 ${
+                  className={`mt-2 leading-8 ${
                     item.isCorrect
                       ? "font-medium text-green-700"
                       : "font-medium text-red-700"
@@ -128,16 +136,16 @@ export default function ReviewCard({ data }: Props) {
                 </p>
               </div>
 
-              <div className="rounded-xl bg-slate-900/60 backdrop-blur border border-slate-700/80 p-4 text-sm">
+              <div className="rounded-xl bg-white/70 p-4 text-base">
                 <p className="font-semibold text-slate-900">Correct answer</p>
-                <p className="mt-2 font-medium leading-6 text-green-700">
+                <p className="mt-2 font-medium leading-8 text-green-700">
                   {item.correctAnswer}
                 </p>
               </div>
             </div>
 
-            <div className="mt-4 rounded-xl bg-slate-900/60 backdrop-blur border border-slate-700/80 p-4">
-              <p className="text-sm leading-7 text-slate-700">{item.feedback}</p>
+            <div className="mt-4 rounded-xl bg-white/80 p-4">
+              <p className="text-base leading-8 text-slate-700">{item.feedback}</p>
             </div>
           </div>
         ))}
