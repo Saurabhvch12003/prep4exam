@@ -503,8 +503,8 @@ export default function HomePage() {
               </div>
             </div>
 
-            <p className="mt-2 text-center text-xs text-slate-400">
-              Enter to send · Shift + Enter for new line
+            <p className="text-xs text-gray-400 mt-2 text-center">
+              © {new Date().getFullYear()} Prep4Exam — Learn smarter, not harder
             </p>
           </div>
         </div>
