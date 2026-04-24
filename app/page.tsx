@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   BookOpen,
   Brain,
@@ -32,7 +32,7 @@ type ChatTurn = {
 function ThinkingCard({ mode }: { mode: "explain" | "quiz" | "review" }) {
   const text =
     mode === "explain"
-      ? "Thinking through your notes..."
+      ? "Thinking About Your Problem..."
       : mode === "quiz"
       ? "Creating a quiz from this topic..."
       : "Reviewing your answers...";
@@ -68,12 +68,7 @@ export default function HomePage() {
   const [messages, setMessages] = useState<ChatTurn[]>([]);
   const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
 
-  const bottomRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading, error]);
 
   function resetSession() {
     setNotes("");
@@ -83,6 +78,17 @@ export default function HomePage() {
     setLoading(null);
     setActiveMessageId(null);
     textareaRef.current?.focus();
+  }
+
+  function scrollToElementById(id: string) {
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
+  }
+
+  function scrollToMessage(messageId: string) {
+    scrollToElementById(`message-${messageId}`);
   }
 
   async function handleExplain() {
@@ -107,6 +113,7 @@ export default function HomePage() {
       ]);
 
       setNotes("");
+      scrollToElementById(`message-${turnId}`);
 
       const res = await fetch("/api/explain", {
         method: "POST",
@@ -130,6 +137,8 @@ export default function HomePage() {
           msg.id === turnId ? { ...msg, explanation: data } : msg
         )
       );
+
+      scrollToElementById(`explanation-${turnId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -164,6 +173,8 @@ export default function HomePage() {
           msg.id === messageId ? { ...msg, quiz: data, userAnswers: {} } : msg
         )
       );
+
+      scrollToElementById(`quiz-${messageId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -205,6 +216,8 @@ export default function HomePage() {
           msg.id === messageId ? { ...msg, review: data } : msg
         )
       );
+
+      scrollToElementById(`review-${messageId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -222,14 +235,7 @@ export default function HomePage() {
     );
   }
 
-  function scrollToMessage(messageId: string) {
-    const el = document.getElementById(`message-${messageId}`);
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
-  function handleTextareaKeyDown(
-    e: React.KeyboardEvent<HTMLTextAreaElement>
-  ) {
+  function handleTextareaKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleExplain();
@@ -332,7 +338,7 @@ export default function HomePage() {
           </div>
         </header>
 
-        <div className="pb-[280px]">
+        <div className="pb-[150px]">
           <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-8 sm:px-6">
             {messages.length === 0 && !loading && (
               <div className="mx-auto mt-10 max-w-2xl text-center">
@@ -358,7 +364,7 @@ export default function HomePage() {
                 <div
                   key={message.id}
                   id={`message-${message.id}`}
-                  className="space-y-4"
+                  className="scroll-mt-24 space-y-4"
                 >
                   <div className="ml-auto w-full max-w-2xl rounded-3xl bg-slate-900 px-5 py-4 text-white shadow-sm">
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
@@ -373,13 +379,19 @@ export default function HomePage() {
                   </div>
 
                   {message.explanation && (
-                    <div className="w-full max-w-3xl space-y-3">
+                    <div
+                      id={`explanation-${message.id}`}
+                      className="scroll-mt-24 w-full max-w-3xl space-y-3"
+                    >
                       <ExplanationCard data={message.explanation} />
 
                       {!message.quiz && (
                         <button
                           onClick={() =>
-                            handleGenerateQuizForMessage(message.id, message.userText)
+                            handleGenerateQuizForMessage(
+                              message.id,
+                              message.userText
+                            )
                           }
                           disabled={loading !== null}
                           className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
@@ -391,7 +403,10 @@ export default function HomePage() {
                   )}
 
                   {message.quiz && (
-                    <div className="w-full max-w-3xl space-y-3">
+                    <div
+                      id={`quiz-${message.id}`}
+                      className="scroll-mt-24 w-full max-w-3xl space-y-3"
+                    >
                       <QuizCard
                         questions={message.quiz.questions}
                         userAnswers={message.userAnswers || {}}
@@ -419,7 +434,10 @@ export default function HomePage() {
                   )}
 
                   {message.review && (
-                    <div className="w-full max-w-3xl">
+                    <div
+                      id={`review-${message.id}`}
+                      className="scroll-mt-24 w-full max-w-3xl"
+                    >
                       <ReviewCard data={message.review} />
                     </div>
                   )}
@@ -436,62 +454,58 @@ export default function HomePage() {
                 {error}
               </div>
             )}
-
-            <div ref={bottomRef} />
           </div>
         </div>
 
-        <div className="fixed bottom-0 left-0 right-0 border-t border-slate-200 bg-white/90 backdrop-blur lg:left-72">
-          <div className="mx-auto max-w-4xl px-4 py-4 sm:px-6">
-            <div className="rounded-[1.75rem] border border-slate-200 bg-white p-3 shadow-lg">
+        <div className="fixed bottom-0 left-0 right-0 border-t border-slate-200 bg-white/95 backdrop-blur lg:left-72">
+          <div className="mx-auto max-w-3xl px-4 py-3 sm:px-6">
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-lg">
               <textarea
                 ref={textareaRef}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 onKeyDown={handleTextareaKeyDown}
-                rows={4}
-                placeholder="Paste your notes or topic here... (Enter to send, Shift+Enter for new line)"
-                className="w-full resize-none rounded-2xl border-0 bg-transparent p-3 text-base leading-8 text-slate-800 outline-none placeholder:text-slate-400"
+                rows={1}
+                placeholder="Ask anything..."
+                className="max-h-32 min-h-[44px] w-full resize-none border-0 bg-transparent text-base leading-7 text-slate-800 outline-none placeholder:text-slate-400"
               />
 
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                <label htmlFor="lengthPreference" className="text-sm font-medium text-slate-700">
-                  Answer Length:
-                </label>
-
-                <select
-                  id="lengthPreference"
-                  value={lengthPreference}
-                  onChange={(e) => setLengthPreference(e.target.value)}
-                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none"
-                >
-                  <option value="short">Short</option>
-                  <option value="medium">Medium</option>
-                  <option value="detailed">Detailed</option>
-                  <option value="very detailed">Very Detailed</option>
-                  <option value="1000 words">1000 words</option>
-                  <option value="3000 words">3000 words</option>
-                  <option value="5000 words">5000 words</option>
-                  <option value="10000 words">10000 words</option>
-                </select>
-              </div>
-
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs text-slate-500">
-                  {notes.trim().length} chars
-                </p>
-
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={handleExplain}
-                    disabled={!notes.trim() || loading !== null}
-                    className="rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <select
+                    value={lengthPreference}
+                    onChange={(e) => setLengthPreference(e.target.value)}
+                    className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-700 outline-none"
+                    aria-label="Response length"
                   >
-                    Explain
-                  </button>
+                    <option value="short">Short</option>
+                    <option value="medium">Medium</option>
+                    <option value="detailed">Detailed</option>
+                    <option value="very detailed">Very Detailed</option>
+                    <option value="1000 words">1000 words</option>
+                    <option value="3000 words">3000 words</option>
+                    <option value="5000 words">5000 words</option>
+                    <option value="10000 words">10000 words</option>
+                  </select>
+
+                  <span className="text-xs text-slate-400">
+                    {notes.trim().length} chars
+                  </span>
                 </div>
+
+                <button
+                  onClick={handleExplain}
+                  disabled={!notes.trim() || loading !== null}
+                  className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Explain
+                </button>
               </div>
             </div>
+
+            <p className="mt-2 text-center text-xs text-slate-400">
+              Enter to send · Shift + Enter for new line
+            </p>
           </div>
         </div>
       </section>

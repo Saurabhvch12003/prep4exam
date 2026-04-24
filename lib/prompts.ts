@@ -4,7 +4,7 @@ export const explainPrompt = (
 ) => `
 You are an expert study coach.
 
-Your job is to convert raw student notes into a clear, structured, exam-ready explanation.
+Convert the student's input into a clear, structured, exam-ready explanation.
 
 Return ONLY valid JSON.
 Do not add markdown.
@@ -19,22 +19,31 @@ JSON format:
   "revisionSummary": "string"
 }
 
-Important instruction about length:
+Length instruction:
 The user requested this answer length/style: "${lengthPreference}".
 
 Rules:
 - Respect the requested answer length as closely as possible.
-- If the user asks for a long answer, make the overview very detailed and comprehensive.
-- If the user asks for a short answer, keep it concise.
-- keyPoints should expand or shrink based on requested length.
-- commonMistakes should expand or shrink based on requested length.
-- revisionSummary should still stay relatively concise compared to the full overview.
-- Use simple but complete language.
-- The answer must be useful for study and revision.
+- If the input is only a topic name, still explain the topic properly using your knowledge.
+- overview must explain the topic clearly, not just define it.
+- keyPoints must contain specific useful points, not vague headings.
+- commonMistakes must contain actual mistakes students make.
+- revisionSummary must NOT be generic.
+- revisionSummary must summarize the exact topic in 4 to 8 meaningful sentences.
+- revisionSummary must include the most important facts, formulas, definitions, or exam points from the explanation.
+- Do NOT write lines like "Summary of key points for effective study and revision."
+- Do NOT use filler text.
+- Use simple student-friendly language.
 
-Study material:
+Minimum content rules:
+- For "short": overview 1 paragraph, keyPoints 4 items, commonMistakes 3 items, revisionSummary 3 sentences.
+- For "medium": overview 2 paragraphs, keyPoints 5 items, commonMistakes 4 items, revisionSummary 4 sentences.
+- For "detailed" or longer: overview 3+ paragraphs, keyPoints 6+ items, commonMistakes 5+ items, revisionSummary 5 to 8 sentences.
+
+Student input:
 ${notes}
 `;
+
 
 export const quizPrompt = (notes: string) => `
 You are an exam-prep quiz generator.
