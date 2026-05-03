@@ -2,40 +2,42 @@ import { NextResponse } from "next/server";
 import { getJsonCompletion } from "@/lib/ai";
 import { reviewPrompt } from "@/lib/prompts";
 
-function normalizeAnswer(answer: string) {
+function normalizeText(answer: string) {
   return String(answer || "")
     .toLowerCase()
-    .replace(/[^a-z0-9.]/g, "")
+    .replace(/\s+/g, " ")
+    .replace(/[^\w\s.-]/g, "")
     .trim();
 }
 
-function extractNumber(answer: string) {
+function extractStrictNumber(answer: string) {
   const match = String(answer || "").match(/-?\d+(\.\d+)?/);
   return match ? Number(match[0]) : null;
 }
 
 function isAnswerCorrect(userAnswer: string, correctAnswer: string) {
-  const user = normalizeAnswer(userAnswer);
-  const correct = normalizeAnswer(correctAnswer);
+  if (!userAnswer || !correctAnswer) return false;
 
-  if (!user || !correct) return false;
+  const userNum = extractStrictNumber(userAnswer);
+  const correctNum = extractStrictNumber(correctAnswer);
 
-  if (user === correct) return true;
-
-  const userNum = extractNumber(userAnswer);
-  const correctNum = extractNumber(correctAnswer);
-
+  // If both answers contain numbers, compare numbers with sign.
+  // Example: 1 !== -1, but -1 === -1
   if (userNum !== null && correctNum !== null) {
-    return Math.abs(userNum - correctNum) < 0.1;
+    return Math.abs(userNum - correctNum) < 0.0001;
   }
 
-  if (correct.includes(user) && user.length >= 3) return true;
-  if (user.includes(correct) && correct.length >= 3) return true;
+  const user = normalizeText(userAnswer);
+  const correct = normalizeText(correctAnswer);
 
-  return false;
+  return user === correct;
 }
 
 function buildScoreSummary(score: number, total: number) {
+  if (total === 0) {
+    return "No answers were reviewed. Please attempt the quiz first.";
+  }
+
   const percentage = Math.round((score / total) * 100);
 
   if (percentage <= 40) {
@@ -49,12 +51,16 @@ function buildScoreSummary(score: number, total: number) {
   return "You have a good understanding of the topic. A little more revision and practice will help you become more confident.";
 }
 
-function buildFeedback(isCorrect: boolean, correctAnswer: string) {
+function buildFeedback(
+  isCorrect: boolean,
+  selectedAnswer: string,
+  correctAnswer: string
+) {
   if (isCorrect) {
     return "Correct. Your answer matches the expected answer.";
   }
 
-  return `Incorrect. The correct answer is "${correctAnswer}". Review this concept once more before moving ahead.`;
+  return `Incorrect. Your answer "${selectedAnswer}" is different from the correct answer "${correctAnswer}". Review this concept once more before moving ahead.`;
 }
 
 export async function POST(req: Request) {
@@ -63,7 +69,7 @@ export async function POST(req: Request) {
     const questions = body?.questions;
     const userAnswers = body?.userAnswers;
 
-    if (!questions || !userAnswers) {
+    if (!Array.isArray(questions) || !userAnswers) {
       return NextResponse.json(
         { error: "Questions and user answers are required." },
         { status: 400 }
@@ -72,44 +78,60 @@ export async function POST(req: Request) {
 
     const data = await getJsonCompletion(reviewPrompt(questions, userAnswers));
 
-    const items = Array.isArray(data.items) ? data.items : [];
+    const aiItems = Array.isArray(data.items) ? data.items : [];
 
     let correctCount = 0;
 
-    const fixedItems = items.map((item: any, index: number) => {
-      const selectedAnswer = userAnswers[index] || "";
-      const correctAnswer =
-        item.correctAnswer || questions[index]?.correctAnswer || "";
+    const fixedItems = questions.map((question: any, index: number) => {
+      const aiItem = aiItems[index] || {};
+
+      const selectedAnswer = String(userAnswers[index] || "");
+      const correctAnswer = String(
+        question.correctAnswer || aiItem.correctAnswer || ""
+      );
 
       const correct = isAnswerCorrect(selectedAnswer, correctAnswer);
 
       if (correct) correctCount++;
 
       return {
-        ...item,
-        question: item.question || questions[index]?.question || "",
+        question: question.question || aiItem.question || "",
         selectedAnswer,
         correctAnswer,
         isCorrect: correct,
-        feedback: buildFeedback(correct, correctAnswer),
+        feedback: buildFeedback(correct, selectedAnswer, correctAnswer),
       };
     });
 
-    data.items = fixedItems;
-    data.score = correctCount;
-    data.total = fixedItems.length;
-    data.summary = buildScoreSummary(correctCount, fixedItems.length);
+    const total = fixedItems.length;
 
-    const weakAreasFromWrong = fixedItems
+    const wrongQuestions = fixedItems
       .filter((item: any) => !item.isCorrect)
       .map((item: any) => item.question)
+      .filter(Boolean)
       .slice(0, 5);
 
-    if (weakAreasFromWrong.length > 0) {
-      data.weakAreas = weakAreasFromWrong;
-    }
+    const fixedData = {
+      ...data,
+      items: fixedItems,
+      score: correctCount,
+      total,
+      summary: buildScoreSummary(correctCount, total),
+      weakAreas:
+        wrongQuestions.length > 0
+          ? wrongQuestions
+          : ["No major weak areas found in this quiz."],
+      reviseNext:
+        Array.isArray(data.reviseNext) && data.reviseNext.length > 0
+          ? data.reviseNext
+          : [
+              "Review the incorrect questions carefully.",
+              "Revise the main concept again using simple examples.",
+              "Practice similar questions to improve accuracy.",
+            ],
+    };
 
-    return NextResponse.json(data);
+    return NextResponse.json(fixedData);
   } catch (error) {
     console.error("Review route error:", error);
 
